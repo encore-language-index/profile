@@ -136,7 +136,7 @@ static profile_sample *new_sample(profile_thread *t, profile_label *label) {
     s->bucket_next = t->buckets[bucket]; t->buckets[bucket] = s;
     profile_sample *head = atomic_load_explicit(&t->manager->samples, memory_order_acquire);
     do { s->next = head; } while (!atomic_compare_exchange_weak_explicit(
-        &t->manager->samples, &head, s, memory_order_release, memory_order_acquire));
+        &t->manager->samples, &head, s, memory_order_acq_rel, memory_order_acquire));
     return s;
 }
 static void record_sample(profile_sample *s, uint64_t elapsed) {
