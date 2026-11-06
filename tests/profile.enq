@@ -1,0 +1,19 @@
+import profile::ProfileManager
+
+static RENDER_PROFILE = ProfileManager::new("render")
+
+@RENDER_PROFILE.profile("draw_frame")
+fn draw_frame(value: u32) -> u32 {
+    ret value + 1_u32
+}
+
+fn main() -> u32 {
+    RENDER_PROFILE.reset()
+    if draw_frame(41_u32) != 42_u32 { ret 1_u32 }
+    if draw_frame(1_u32) != 2_u32 { ret 2_u32 }
+    if RENDER_PROFILE.sample_count() != 2_u64 { ret 3_u32 }
+    let report = RENDER_PROFILE.report_text()
+    if !report.contains("draw_frame") { ret 4_u32 }
+    if !report.contains("count=2") { ret 5_u32 }
+    ret 0_u32
+}

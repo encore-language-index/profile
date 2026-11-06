@@ -1,0 +1,93 @@
+import log::Logger
+import std::time::perf_counter_ns
+
+extern fn encore_profile_manager_new(name: str) -> usize
+extern fn encore_profile_record(handle: usize, label: str, elapsed_ns: u64) ->()
+extern fn encore_profile_report(handle: usize) -> str
+extern fn encore_profile_reset(handle: usize) ->()
+extern fn encore_profile_sample_count(handle: usize) -> u64
+
+/// A named, process-wide collection of aggregated function timings.
+///
+/// Reconstructing a manager with the same name returns the same native
+/// collection. This keeps decorated call sites cheap and makes a manager safe
+/// to expose as an immutable module `static`.
+pub struct ProfileManager {
+    handle: usize
+}
+
+impl for ProfileManager {
+    pub fn new(name: str) -> Self {
+        ret Self {
+            unsafe {
+                encore_profile_manager_new(name)
+            }
+        }
+    }
+
+    /// Records one elapsed interval in nanoseconds.
+    pub fn record(self: Self, label: str, elapsed_ns: u64) ->() {
+        unsafe {
+            encore_profile_record(self.handle, label, elapsed_ns)
+        }
+        ret()
+    }
+
+    /// Returns a stable, human-readable snapshot of all collected samples.
+    pub fn report_text(self: Self) -> str {
+        unsafe {
+            ret encore_profile_report(self.handle)
+        }
+    }
+
+    /// Writes the current report through Encore's structured logging package.
+    pub fn report(self: Self) ->() {
+        Logger::console("profile").info(self.report_text())
+        ret()
+    }
+
+    /// Clears every aggregate owned by this manager.
+    pub fn reset(self: Self) ->() {
+        unsafe {
+            encore_profile_reset(self.handle)
+        }
+        ret()
+    }
+
+    pub fn sample_count(self: Self) -> u64 {
+        unsafe {
+            ret encore_profile_sample_count(self.handle)
+        }
+    }
+
+    /// Statically decorates a synchronous function. The compiler substitutes
+    /// `func(args)` with a direct call to the hidden undecorated function; no
+    /// closure, vtable, dictionary, or indirect call exists at runtime.
+    #attr(decorator)
+    pub fn profile[Args, Result](
+        self: Self,
+        func: Callable[Args, Result],
+        args: Args,
+        label: str,
+    ) -> Result {
+        let start = perf_counter_ns()
+        let result = func(args)
+        self.record(label, perf_counter_ns() - start)
+        ret result
+    }
+
+    /// Async counterpart. It is deliberately explicit so a sync decorator
+    /// can never add an implicit suspension point.
+    #attr(decorator)
+    pub async fn profile_async[Args, Result](
+        self: Self,
+        func: Callable[Args, Result],
+        args: Args,
+        label: str,
+    ) -> Result {
+        let start = perf_counter_ns()
+        let result = await func(args)
+        self.record(label, perf_counter_ns() - start)
+        ret result
+    }
+}

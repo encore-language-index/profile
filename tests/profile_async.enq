@@ -1,0 +1,18 @@
+import std::future::block_on
+import profile::ProfileManager
+
+static ASYNC_PROFILE = ProfileManager::new("async")
+
+@ASYNC_PROFILE.profile_async("load")
+async fn load(value: u32) -> u32 {
+    ret value + 1_u32
+}
+
+fn main() -> u32 {
+    ASYNC_PROFILE.reset()
+    let pending = load(41_u32)
+    let result = block_on[u32, __encore_future_load](pending)
+    if result != 42_u32 { ret 1_u32 }
+    if ASYNC_PROFILE.sample_count() != 1_u64 { ret 2_u32 }
+    ret 0_u32
+}

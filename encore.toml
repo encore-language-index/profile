@@ -1,0 +1,9 @@
+[project]
+name = "profile"
+version = "0.0.0"
+repository = "https://github.com/encore-language-index/profile"
+encore = ">=0.1.14"
+description = "Zero-overhead source decorators with aggregated runtime profiling"
+readme = "README.md"
+licence = "MIT"
+dependencies = ["path@../std", "path@../log"]
