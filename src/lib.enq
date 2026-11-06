@@ -1,5 +1,11 @@
-import log::Logger
+import std::io::println
 import std::time::perf_counter_ns
+
+extern fn encore_profile_register(handle: usize, label: str) -> usize
+extern fn encore_profile_record_registered(handle: usize, label: usize, elapsed_ns: u64) ->()
+
+/// Reusable numeric identity; valid across reset. Register once outside hot loops.
+pub struct ProfileLabel { handle: usize }
 
 extern fn encore_profile_manager_new(name: str) -> usize
 extern fn encore_profile_record(handle: usize, label: str, elapsed_ns: u64) ->()
@@ -33,6 +39,14 @@ impl for ProfileManager {
         ret()
     }
 
+    pub fn register(self: Self, label: str) -> ProfileLabel {
+        unsafe { ret ProfileLabel { encore_profile_register(self.handle, label) } }
+    }
+
+    pub fn record_registered(self: Self, label: ProfileLabel, elapsed_ns: u64) ->() {
+        unsafe { encore_profile_record_registered(self.handle, label.handle, elapsed_ns) }
+    }
+
     /// Returns a stable, human-readable snapshot of all collected samples.
     pub fn report_text(self: Self) -> str {
         unsafe {
@@ -40,9 +54,9 @@ impl for ProfileManager {
         }
     }
 
-    /// Writes the current report through Encore's structured logging package.
+    /// Writes the current report to stdout; use report_text for custom sinks.
     pub fn report(self: Self) ->() {
-        Logger::console("profile").info(self.report_text())
+        println(self.report_text())
         ret()
     }
 
